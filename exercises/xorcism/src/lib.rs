@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::iter::Cycle;
 use std::slice::Iter;
 
@@ -5,23 +6,43 @@ use std::slice::Iter;
 #[derive(Clone)]
 pub struct Xorcism<'a> {
     key: Cycle<Iter<'a, u8>>,
+    orig_len: usize,
 }
 
-/// For composability, it is important that `munge` returns an iterator compatible with its input.
-///
-/// However, `impl Trait` syntax can specify only a single non-auto trait.
-/// Therefore, we define this output trait with generic implementations on all compatible types,
-/// and return that instead.
-pub trait MungeOutput: Iterator<Item = u8> + ExactSizeIterator {}
-impl<T> MungeOutput for T where T: Iterator<Item = u8> + ExactSizeIterator {}
+pub struct Munger<'a, I: Iterator<Item = Itm> + ExactSizeIterator, Itm: Borrow<u8>> {
+    pt: I,
+    key: Cycle<Iter<'a, u8>>,
+}
+
+impl<'a, I: Iterator<Item = Itm> + ExactSizeIterator, Itm: Borrow<u8>> Iterator
+    for Munger<'a, I, Itm>
+{
+    type Item = u8;
+    fn next(&mut self) -> Option<u8> {
+        self.pt
+            .next()
+            .map(|x| *x.borrow() ^ self.key.next().unwrap())
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let sz = self.pt.len();
+        (sz, Some(sz))
+    }
+}
+
+impl<'a, I: Iterator<Item = Itm> + ExactSizeIterator, Itm: Borrow<u8>> ExactSizeIterator
+    for Munger<'a, I, Itm>
+{
+}
 
 impl<'a> Xorcism<'a> {
     /// Create a new Xorcism munger from a key
     ///
     /// Should accept anything which has a cheap conversion to a byte slice.
     pub fn new<Key: AsRef<[u8]> + ?Sized>(key: &'a Key) -> Xorcism<'a> {
+        let as_ref = key.as_ref();
         Self {
-            key: key.as_ref().iter().cycle(),
+            key: as_ref.iter().cycle(),
+            orig_len: as_ref.len(),
         }
     }
 
@@ -42,10 +63,20 @@ impl<'a> Xorcism<'a> {
     ///
     /// Should accept anything which has a cheap conversion to a byte iterator.
     /// Shouldn't matter whether the byte iterator's values are owned or borrowed.
-    pub fn munge<Data>(&mut self, data: Data) -> impl MungeOutput {
-        unimplemented!();
-        // this empty iterator silences a compiler complaint that
-        // () doesn't implement ExactSizeIterator
-        std::iter::empty()
+    pub fn munge<
+        Data: IntoIterator<IntoIter = Iter, Item = Itm>,
+        Iter: Iterator<Item = Itm> + ExactSizeIterator,
+        Itm: Borrow<u8>,
+    >(
+        &mut self,
+        data: Data,
+    ) -> Munger<'a, Iter, Itm> {
+        let key = self.key.clone();
+        let pt = data.into_iter();
+        // When advance_by(n) is stabilised, use that instead.
+        for _ in 0..(pt.len() % self.orig_len) {
+            self.key.next();
+        }
+        Munger { pt, key }
     }
 }

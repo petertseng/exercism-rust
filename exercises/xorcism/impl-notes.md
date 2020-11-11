@@ -80,3 +80,34 @@ Especially since the statefulness implies that the `MungeOutput` will probably n
 I don't think this is possible since it's not possible to prove that `Xorcism` won't also mutate it for the entire time that the `MungeOutput` lives.
 I would have to clone the `key` iterator and advance the Xorcism's the appropriate amount.
 However, for certain inputs to `munge` (for exampkle `munge` could take an iterator) it's may not be possible to figure out what "the appropriate amount" should be.
+
+Well, let's see what `munge` takes.
+
+* `&[u8]` (`as_bytes`, `statefulness`)
+* `&&[u8]` (statefulness)
+* impl MungeOutput (`round_trip`)
+* `Vec<u8>`
+
+Okay, well that means it's gotta be:
+
+```rust
+    pub fn munge<Data: IntoIterator<Item = ???>>(&mut self, data: Data) -> impl MungeOutput
+```
+
+Now, Item could be either `u8` or `&u8` here, how to accept both?
+That'd be `Borrow`, wouldn't it. Great.
+
+```rust
+    pub fn munge<Data: IntoIterator<Item = Itm>, Itm: std::borrow::Borrow<u8>>(&mut self, data: Data) -> impl MungeOutput
+```
+
+(Actually I spent some time seeing if it was `AsRef` before understanding that it would be `Borrow`)
+... and I'm going to have to restirct the IntoIterator's IntoIter as ExactSizeIterator if I'm going to do my weirdo clone-and-advance solution.
+... and now that I'm done and looked at the example to compare, now I see that the example has to do the same, for similar reasons.
+
+I note that I did not need to keep the MungeOutput, and honestly I prefer to return concrete types anyway.
+
+Took about five hours all told (note I haven't done the io section yet).
+I see that all the traits that ended up being useful were in the "Useful Traits" section.
+Some of my time was wasted because I flailed around uselessly instead of reading that section.
+There's nothing that can be done about that though, since if a student chooses not to read the README and just plow ahead, that's a self-inflicted problem.
