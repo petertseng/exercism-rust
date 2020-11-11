@@ -1,9 +1,10 @@
+use std::iter::Cycle;
+use std::slice::Iter;
+
 /// A munger which XORs a key with some data
 #[derive(Clone)]
 pub struct Xorcism<'a> {
-    // This field is just to suppress compiler complaints;
-    // feel free to delete it at any point.
-    _phantom: std::marker::PhantomData<&'a u8>,
+    key: Cycle<Iter<'a, u8>>,
 }
 
 /// For composability, it is important that `munge` returns an iterator compatible with its input.
@@ -18,8 +19,10 @@ impl<'a> Xorcism<'a> {
     /// Create a new Xorcism munger from a key
     ///
     /// Should accept anything which has a cheap conversion to a byte slice.
-    pub fn new<Key>(key: &Key) -> Xorcism<'a> {
-        unimplemented!()
+    pub fn new<Key: AsRef<[u8]> + ?Sized>(key: &'a Key) -> Xorcism<'a> {
+        Self {
+            key: key.as_ref().iter().cycle(),
+        }
     }
 
     /// XOR each byte of the input buffer with a byte from the key.
