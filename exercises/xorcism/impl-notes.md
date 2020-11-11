@@ -71,3 +71,12 @@ pub struct Xorcism<'a> {
     key: std::iter::Cycle<std::slice::Iter<'a, u8>>,
 }
 ```
+
+I actually implemented `munge_in_place` first (it was quite trivial), which knocks out a good chunk of tests.
+But `munge` gets more interesting.
+
+I'm not sure holding `Cycle<Iter<'a, u8>>` will work here.
+Especially since the statefulness implies that the `MungeOutput` will probably need to have `mut` on `key`.
+I don't think this is possible since it's not possible to prove that `Xorcism` won't also mutate it for the entire time that the `MungeOutput` lives.
+I would have to clone the `key` iterator and advance the Xorcism's the appropriate amount.
+However, for certain inputs to `munge` (for exampkle `munge` could take an iterator) it's may not be possible to figure out what "the appropriate amount" should be.

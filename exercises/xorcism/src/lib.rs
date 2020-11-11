@@ -30,7 +30,9 @@ impl<'a> Xorcism<'a> {
     /// Note that this is stateful: repeated calls are likely to produce different results,
     /// even with identical inputs.
     pub fn munge_in_place(&mut self, data: &mut [u8]) {
-        unimplemented!()
+        for datum in data {
+            *datum ^= self.key.next().unwrap();
+        }
     }
 
     /// XOR each byte of the data with a byte from the key.
