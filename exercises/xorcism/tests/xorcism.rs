@@ -26,6 +26,20 @@ fn munge_output_has_len() {
 
 #[test]
 #[ignore]
+fn interleave() {
+    let key = &[0x10, 0x20, 0x30, 0x40];
+    let input = &[0x1, 0x2];
+    let mut xs = Xorcism::new(&key);
+    let mut m1 = xs.munge(input);
+    let mut m2 = xs.munge(input);
+    assert_eq!(m1.next(), Some(0x11));
+    assert_eq!(m2.next(), Some(0x31)); // Note, not 0x21
+    assert_eq!(m1.next(), Some(0x22)); // Note, not 0x32
+    assert_eq!(m2.next(), Some(0x42));
+}
+
+#[test]
+#[ignore]
 fn statefulness() {
     // we expect Xorcism to be stateful: at the end of a munging run, the key has rotated.
     // this means that until the key has completely rotated around, equal inputs will produce
