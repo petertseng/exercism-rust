@@ -111,3 +111,23 @@ Took about five hours all told (note I haven't done the io section yet).
 I see that all the traits that ended up being useful were in the "Useful Traits" section.
 Some of my time was wasted because I flailed around uselessly instead of reading that section.
 There's nothing that can be done about that though, since if a student chooses not to read the README and just plow ahead, that's a self-inflicted problem.
+
+`reader` was pretty straightforward.
+A few minutes to read the docs, a minute or two to think about what values the struct should store, and the implementation was straightforward.
+5-10 minutes.
+
+I notice that `writer` is going to be trickier.
+Don't know in advance how many bytes the underlying `Write` is going to be able to write.
+I ended up writing one byte at a time by making the key peekable.
+I don't really like it because I don't know if there is overhead involved in making that many `write` calls (one per byte!).
+Other alternative is to block until I can write the entire buffer - I see the example took that approach.
+I could also attempt to write more bytes at a time instead of one, which will require more logic to peek at multiple bytes from the key stream (or "rewind" the key stream appropriately by advancing it the appropriate number of times).
+10-20 minutes.
+
+Depending on how thorough this exercise aims to be, some tests to consider adding:
+
+* An underlying Read that sometimes errors.
+* An underlying Write that sometimes errors.
+* An underlying Write that sometimes successfully writes some amount that isn't the entire buffer.
+* With either of the two above, test that `write` returns correct number of bytes written - currently `write` is never called directly (actually, that might be okay if the tests calling `write_all` will already fail in the face of incorrect `write` behaviour).
+* I understand we're already exploring that possibility in https://github.com/exercism/rust/issues/992, so the argument here would either be "we're already teaching what to do in the face of errors in the other exercise and therefore don't need to repeat the lesson here" vs "we should always instill the habits of doing the right thing in the face of errors, so we should do it here too"
